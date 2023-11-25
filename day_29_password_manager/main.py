@@ -1,33 +1,42 @@
 # 14.10.2023 Sergii Logosha sergiilogosha@gmail.com
-# Last modified 15.10.2023
+# Last modified 25.11.2023
 
 from random import randint, choice, shuffle
 from tkinter import *
 from tkinter import messagebox
 import pyperclip
+import json
 
 
 def save():
     user_website = website_entry.get()
     user_email_username = email_u_name_entry.get()
     user_password = password_entry.get()
+    new_data = {
+        user_website: {
+            'email': user_email_username,
+            'password': user_password
+        }
+    }
 
     if user_website == '' or user_password == '' or user_email_username == '':
         messagebox.showinfo(title='Oops', message="Please, don't leave any "
                                                   "fields empty")
     else:
-        is_ok = messagebox.askokcancel(title=user_website,
-                                       message=f'Credentials to be saved:\n'
-                                       f'Email/Username: {user_email_username}'
-                                       f'\nPassword: {user_password}\n'
-                                       f'Do you want to save it?')
-
-        if is_ok:
-            with open('data.txt', 'a') as file:
-                file.write(f'{user_website} | {user_email_username} | '
-                           f'{user_password}\n')
-                website_entry.delete(0, END)
-                password_entry.delete(0, END)
+        try:
+            with open('data.json', 'r') as file:
+                data = json.load(file)
+                data.update(new_data)
+        except FileNotFoundError:
+            with open('data.json', 'w') as new_file:
+                json.dump(new_data, new_file, indent=4)
+            with open('data.json', 'r') as file:
+                data = json.load(file)
+                data.update(new_data)
+        with open('data.json', 'w') as file:
+            json.dump(data, file, indent=4)
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
 
 
 def generate_password():
@@ -47,6 +56,22 @@ def generate_password():
     pyperclip.copy(password)
 
 
+def find_password():
+    user_website = website_entry.get()
+    try:
+        with open('data.json', 'r') as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        messagebox.showwarning(title='Warning!', message='No Data File Found')
+    else:
+        if user_website in data:
+            user_email = data[user_website]['email']
+            user_password = data[user_website]['password']
+            messagebox.showinfo(title=user_website, message=f'Email: {user_email}\nPassword: {user_password}')
+        else:
+            messagebox.showinfo(title=user_website, message='No such website in database')
+
+
 window = Tk()
 window.title('Password Manager')
 window.config(padx=30, pady=30)
@@ -58,9 +83,11 @@ canvas.grid(row=0, column=0, columnspan=3)
 
 website_label = Label(text='Website:')
 website_label.grid(row=1, column=0, sticky='e')
-website_entry = Entry(width=39)
+website_entry = Entry(width=21)
 website_entry.grid(row=1, column=1, columnspan=2, sticky='w')
 website_entry.focus()
+search_button = Button(text='Search', width=13, command=find_password)
+search_button.grid(row=1, column=2)
 
 email_u_name_label = Label(text='Email/Username:')
 email_u_name_label.grid(row=2, column=0, sticky='e')
